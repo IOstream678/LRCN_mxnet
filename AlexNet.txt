@@ -1,0 +1,18 @@
+AlexNet(
+  (features): HybridSequential(
+    (0): Conv2D(None -> 64, kernel_size=(11, 11), stride=(4, 4), padding=(2, 2), Activation(relu))
+    (1): MaxPool2D(size=(3, 3), stride=(2, 2), padding=(0, 0), ceil_mode=False, global_pool=False, pool_type=max, layout=NCHW)
+    (2): Conv2D(None -> 192, kernel_size=(5, 5), stride=(1, 1), padding=(2, 2), Activation(relu))
+    (3): MaxPool2D(size=(3, 3), stride=(2, 2), padding=(0, 0), ceil_mode=False, global_pool=False, pool_type=max, layout=NCHW)
+    (4): Conv2D(None -> 384, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), Activation(relu))
+    (5): Conv2D(None -> 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), Activation(relu))
+    (6): Conv2D(None -> 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), Activation(relu))
+    (7): MaxPool2D(size=(3, 3), stride=(2, 2), padding=(0, 0), ceil_mode=False, global_pool=False, pool_type=max, layout=NCHW)
+    (8): Flatten
+    (9): Dense(None -> 4096, Activation(relu))
+    (10): Dropout(p = 0.5, axes=())
+    (11): Dense(None -> 4096, Activation(relu))
+    (12): Dropout(p = 0.5, axes=())
+  )
+  (output): Dense(None -> 1000, linear)
+)
