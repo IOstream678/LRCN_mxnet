@@ -13,7 +13,7 @@ Gluon是mxnet的高级接口
 + []Image description
 + []Video description
 
-###Action Recognition
+### Action Recognition
 论文使用ALEXNet+单层LSTM实现，将视频数据集的depth看作时间步，
 每个时间步都将单帧图像输入CNN提取特征，
 后接全连接层，输入LSTM，将各时间步LSTM的输出取平均。  
