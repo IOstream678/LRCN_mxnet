@@ -65,7 +65,7 @@ class LRCN_action_recognation_model(nn.HybridBlock):
             x = F.flatten(self.feature_extractor(x))  # x变为NF的二维
             x = x.expand_dims(axis=0)  # x新增了一维，
             xs.append(x)
-        X_ = nd.concat(*(xs), dim=0)  # X_变为(T,N,F)
+        X_ = nd.concat(*xs, dim=0)  # X_变为(T,N,F)
         output, state = self.rnn_layer(X_, state)  # 输出也成为TNF
         output = output.sum(axis=0, keepdims=False) / output.shape[0]  # 在时间步求平均，转换为NF
         Y = self.dense(output)  # Y输出(N,num_classes)
@@ -78,6 +78,6 @@ loss = gloss.SoftmaxCrossEntropyLoss()
 
 optimizer_params = {'learning_rate': 0.1, 'momentum': 0.9, 'wd': 5e-4}
 trainer = gluon.Trainer(net.collect_params('LRCN'), 'sgd', optimizer_params)
-# print(net.collect_params('LRCN'))
+
 d2l.train(train_iter=train_data, test_iter=val_data, net=net, loss=loss, trainer=trainer, ctx=ctx, num_epochs=num_epochs)
 
