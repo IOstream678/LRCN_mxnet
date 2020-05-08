@@ -11,7 +11,7 @@ Gluon是mxnet的高级接口
 论文分为三个部分，计划依次实现：  
 + [x]Activity(action) recognition
 + []Image description
-+ []Video description  
++ []Video description
 
 ###Action Recognition
 论文使用ALEXNet+单层LSTM实现，将视频数据集的depth看作时间步，
