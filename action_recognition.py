@@ -12,12 +12,11 @@ from gluoncv.data.transforms import video
 ctx = mxnet.gpu(0)
 input_size = 224
 scale_ratios = [1.0, 0.875, 0.75, 0.66]
-batch_size = 64
-num_epochs = 1000
+batch_size = 8
+num_epochs = 200
 num_classes = 101
 num_depth = 8
 num_hiddens = 256
-
 
 train_list = '../data/ucf101/ucfTrainTestlist/ucf101_train_split_1_rawframes.txt'
 val_list = '../data/ucf101/ucfTrainTestlist/ucf101_val_split_1_rawframes.txt'
@@ -42,42 +41,48 @@ val_data = gluon.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=Fal
 
 
 # nd.split()
-class LRCN_action_recognation_model(nn.HybridBlock):
-    def __init__(self, ctx, **kwargs):
-        super(LRCN_action_recognation_model, self).__init__(**kwargs)
-        self.feature_extractor = gluon.model_zoo.vision.get_model(name='alexnet', pretrained=True, ctx=ctx).features[
-                                 :10]
-        self.rnn_layer = rnn.LSTM(hidden_size=num_hiddens, prefix='LRCN_LSTM_')
-        self.rnn_layer.initialize(ctx=ctx)
-        self.begin_state()
-        self.dense = nn.Dense(num_classes, prefix='LRCN_Dense_')
-        self.dense.initialize(ctx=ctx)
+def get_action_recognition_model(ctx):
+    class LRCN_action_recognition_model(nn.HybridBlock):
+        def __init__(self, ctx, **kwargs):
+            super(LRCN_action_recognition_model, self).__init__(**kwargs)
+            # self.feature_extractor = gluon.model_zoo.vision.get_model(name='alexnet', pretrained=True, ctx=ctx).features[
+            #                          :10]
+            self.feature_extractor = gluon.model_zoo.vision.get_model(name='vgg16', pretrained=True, ctx=ctx).features[
+                                     :32]
+            self.rnn_layer = rnn.LSTM(hidden_size=num_hiddens, prefix='LRCN_LSTM_')
+            self.rnn_layer.initialize(ctx=ctx)
+            self.begin_state()
+            self.dense = nn.Dense(num_classes, prefix='LRCN_Dense_')
+            self.dense.initialize(ctx=ctx)
 
-    def begin_state(self, *args, **kwargs):
-        self.init_state = self.rnn_layer.begin_state(batch_size=batch_size, ctx=ctx, *args, **kwargs)
+        def begin_state(self, *args, **kwargs):
+            self.init_state = self.rnn_layer.begin_state(batch_size=batch_size, ctx=ctx, *args, **kwargs)
 
-    def hybrid_forward(self, F, X, *args, **kwargs):
-        X = X.reshape((-1,) + X.shape[2:])  # X是五维NCDHW
-        inputs = X.split(axis=2, num_outputs=X.shape[2], squeeze_axis=1)  # input变为D个NCHW组成的list
-        xs = []
-        state = self.init_state  #
-        for x in inputs:
-            x = F.flatten(self.feature_extractor(x))  # x变为NF的二维
-            x = x.expand_dims(axis=0)  # x新增了一维，
-            xs.append(x)
-        X_ = nd.concat(*xs, dim=0)  # X_变为(T,N,F)
-        output, state = self.rnn_layer(X_, state)  # 输出也成为TNF
-        output = output.sum(axis=0, keepdims=False) / output.shape[0]  # 在时间步求平均，转换为NF
-        Y = self.dense(output)  # Y输出(N,num_classes)
-        return Y
+        def hybrid_forward(self, F, X, *args, **kwargs):
+            X = X.reshape((-1,) + X.shape[2:])  # X是五维NCDHW
+            inputs = X.split(axis=2, num_outputs=X.shape[2], squeeze_axis=1)  # input变为D个NCHW组成的list
+            xs = []
+            state = self.init_state  #
+            for x in inputs:
+                x = F.flatten(self.feature_extractor(x))  # x变为NF的二维
+                x = x.expand_dims(axis=0)  # x新增了一维，
+                xs.append(x)
+            X_ = nd.concat(*xs, dim=0)  # X_变为(T,N,F)
+            output, state = self.rnn_layer(X_, state)  # 输出也成为TNF
+            output = output.sum(axis=0, keepdims=False) / output.shape[0]  # 在时间步求平均，转换为NF
+            Y = self.dense(output)  # Y输出(N,num_classes)
+            return Y
+
+    return LRCN_action_recognition_model(ctx=ctx)
 
 
-net = LRCN_action_recognation_model(ctx=ctx)
+net = get_action_recognition_model(ctx=ctx)
 print(net)
 loss = gloss.SoftmaxCrossEntropyLoss()
 
 optimizer_params = {'learning_rate': 0.1, 'momentum': 0.9, 'wd': 5e-4}
 trainer = gluon.Trainer(net.collect_params('LRCN'), 'sgd', optimizer_params)
 
-d2l.train(train_iter=train_data, test_iter=val_data, net=net, loss=loss, trainer=trainer, ctx=ctx, num_epochs=num_epochs)
-
+d2l.train(train_iter=train_data, test_iter=val_data, net=net, loss=loss, trainer=trainer, ctx=ctx,
+          num_epochs=num_epochs)
+net.save_parameters(filename='./LRCN_AR_vgg16.params')
