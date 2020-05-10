@@ -12,8 +12,8 @@ from gluoncv.data.transforms import video
 ctx = mxnet.gpu(0)
 input_size = 224
 scale_ratios = [1.0, 0.875, 0.75, 0.66]
-batch_size = 8
-num_epochs = 200
+batch_size = 32
+num_epochs = 500
 num_classes = 101
 num_depth = 8
 num_hiddens = 256
@@ -45,10 +45,11 @@ def get_action_recognition_model(ctx):
     class LRCN_action_recognition_model(nn.HybridBlock):
         def __init__(self, ctx, **kwargs):
             super(LRCN_action_recognition_model, self).__init__(**kwargs)
-            # self.feature_extractor = gluon.model_zoo.vision.get_model(name='alexnet', pretrained=True, ctx=ctx).features[
-            #                          :10]
-            self.feature_extractor = gluon.model_zoo.vision.get_model(name='vgg16', pretrained=True, ctx=ctx).features[
-                                     :32]
+            self.feature_extractor = gluon.model_zoo.vision.get_model(name='alexnet', pretrained=True,
+                                                                      ctx=ctx).features[
+                                     :10]
+            # self.feature_extractor = gluon.model_zoo.vision.get_model(name='vgg16', pretrained=True, ctx=ctx).features[
+            #                          :32]
             self.rnn_layer = rnn.LSTM(hidden_size=num_hiddens, prefix='LRCN_LSTM_')
             self.rnn_layer.initialize(ctx=ctx)
             self.begin_state()
@@ -80,9 +81,11 @@ net = get_action_recognition_model(ctx=ctx)
 print(net)
 loss = gloss.SoftmaxCrossEntropyLoss()
 
-optimizer_params = {'learning_rate': 0.1, 'momentum': 0.9, 'wd': 5e-4}
-trainer = gluon.Trainer(net.collect_params('LRCN'), 'sgd', optimizer_params)
-
+optimizer_params = {'learning_rate': 0.01, 'momentum': 0.9, 'wd': 5e-4}
+# trainer = gluon.Trainer(net.collect_params('LRCN'), 'sgd', optimizer_params)
+trainer = gluon.Trainer(net.collect_params(), 'sgd', optimizer_params)
+net.rnn_layer.collect_params().setattr('lr_mult', 10)
+net.dense.collect_params().setattr('lr_mult', 10)
 d2l.train(train_iter=train_data, test_iter=val_data, net=net, loss=loss, trainer=trainer, ctx=ctx,
           num_epochs=num_epochs)
 net.save_parameters(filename='./LRCN_AR_vgg16.params')
